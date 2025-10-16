@@ -46,21 +46,259 @@
           <li class="breadcrumb-item active" aria-current="page">Classes</li>
         </ol>
       </nav>
-      <h2 class="mb-4">My Classes</h2>
-      <div class="row">
-        <div class="col-md-6 mb-4">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h5 class="card-title">SE101 – Software Engineering I</h5>
-              <p class="card-text">Enrollment: 2 students</p>
-              <a href="class-detail.html?classId=SE101" class="btn btn-outline-primary me-2">Open Class</a>
-              <a href="assignment-new.html?classId=SE101" class="btn btn-outline-success">New Assignment</a>
-            </div>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Classes</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAssignmentModal">
+          <i class="bi bi-plus-circle me-2"></i>Create Assignment
+        </button>
+      </div>
+      <div class="row" id="classesContainer">
+        <!-- Classes will be loaded dynamically -->
+      </div>
+    </main>
+
+    <!-- Create Assignment Modal -->
+    <div class="modal fade" id="createAssignmentModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Create New Assignment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="assignmentForm">
+              <div class="mb-3">
+                <label for="classSelect" class="form-label">Class</label>
+                <select class="form-select" id="classSelect" required>
+                  <option value="">Select a class...</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="assignmentTitle" class="form-label">Assignment Title</label>
+                <input type="text" class="form-control" id="assignmentTitle" required>
+              </div>
+              <div class="mb-3">
+                <label for="assignmentDescription" class="form-label">Description</label>
+                <textarea class="form-control" id="assignmentDescription" rows="3"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="maxPoints" class="form-label">Max Points</label>
+                <input type="number" class="form-control" id="maxPoints" value="100" min="1" required>
+              </div>
+              <div class="mb-3">
+                <label for="dueDate" class="form-label">Due Date</label>
+                <input type="datetime-local" class="form-control" id="dueDate" required>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="createAssignmentBtn">Create Assignment</button>
           </div>
         </div>
       </div>
-    </main>
+    </div>
+
     <footer class="bg-light text-center py-3 mt-5"><small class="text-muted">AI Grading Demo &copy; 2025</small></footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp, addDoc, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      let currentUser = null;
+      let classes = [];
+
+      // Auto-create General course for a class if it doesn't exist
+      async function ensureGeneralCourse(classId) {
+        const courseId = `course_general_${classId}`;
+        try {
+          const courseRef = doc(db, "course", courseId);
+          await setDoc(courseRef, {
+            code: "GEN",
+            name: "General",
+            lecturerId: currentUser.uid,
+            classId: classId,
+            academicYear: "2025",
+            academicTerm: "T1",
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          console.log(`General course ensured for class ${classId}`);
+          return courseId;
+        } catch (error) {
+          console.error("Error ensuring general course:", error);
+          throw error;
+        }
+      }
+
+      // Load classes for the current lecturer
+      async function loadClasses() {
+        try {
+          // First get the lecturer's user profile to get their authUid
+          const userQuery = query(collection(db, "user"), where("authUid", "==", currentUser.uid), limit(1));
+          const userSnapshot = await getDocs(userQuery);
+          
+          if (userSnapshot.empty) {
+            console.error("No user profile found for current auth user");
+            return;
+          }
+          
+          const userDoc = userSnapshot.docs[0];
+          const userId = userDoc.id;
+          
+          // Get enrollments for this user where role is lecturer
+          const enrollmentQuery = query(collection(db, "enrollment"), where("userId", "==", userId), where("roleInCourse", "==", "lecturer"));
+          const enrollmentSnapshot = await getDocs(enrollmentQuery);
+          
+          const courseIds = [];
+          enrollmentSnapshot.forEach(doc => {
+            courseIds.push(doc.data().courseId);
+          });
+          
+          if (courseIds.length === 0) {
+            classes = [];
+            renderClasses();
+            populateClassSelect();
+            return;
+          }
+          
+          // Get courses for these courseIds
+          const coursesQuery = query(collection(db, "course"), where("__name__", "in", courseIds));
+          const coursesSnapshot = await getDocs(coursesQuery);
+          
+          const classIds = [];
+          coursesSnapshot.forEach(doc => {
+            classIds.push(doc.data().classId);
+          });
+          
+          // Get classes for these classIds
+          if (classIds.length > 0) {
+            const classesQuery = query(collection(db, "class"), where("__name__", "in", classIds));
+            const classesSnapshot = await getDocs(classesQuery);
+            
+            classes = [];
+            classesSnapshot.forEach(doc => {
+              classes.push({ id: doc.id, ...doc.data() });
+            });
+          } else {
+            classes = [];
+          }
+          
+          renderClasses();
+          populateClassSelect();
+        } catch (error) {
+          console.error("Error loading classes:", error);
+        }
+      }
+
+      // Render classes in the UI
+      function renderClasses() {
+        const container = document.getElementById('classesContainer');
+        if (classes.length === 0) {
+          container.innerHTML = '<div class="col-12"><div class="alert alert-info">No classes found. Create a class first.</div></div>';
+          return;
+        }
+
+        container.innerHTML = classes.map(cls => `
+          <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body">
+                <h5 class="card-title">${cls.className}</h5>
+                <p class="card-text">Academic Year: ${cls.academicYear}</p>
+                <a href="class-detail.html?classId=${cls.id}" class="btn btn-outline-primary me-2">Open Class</a>
+                <button class="btn btn-outline-success" onclick="createAssignmentForClass('${cls.id}')">New Assignment</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Populate class select in modal
+      function populateClassSelect() {
+        const select = document.getElementById('classSelect');
+        select.innerHTML = '<option value="">Select a class...</option>' +
+          classes.map(cls => `<option value="${cls.id}">${cls.className}</option>`).join('');
+      }
+
+      // Create assignment for a specific class
+      window.createAssignmentForClass = async function(classId) {
+        const classObj = classes.find(c => c.id === classId);
+        if (!classObj) return;
+
+        document.getElementById('classSelect').value = classId;
+        const modal = new bootstrap.Modal(document.getElementById('createAssignmentModal'));
+        modal.show();
+      };
+
+      // Create assignment
+      document.getElementById('createAssignmentBtn').addEventListener('click', async function() {
+        const classId = document.getElementById('classSelect').value;
+        const title = document.getElementById('assignmentTitle').value;
+        const description = document.getElementById('assignmentDescription').value;
+        const maxPoints = parseInt(document.getElementById('maxPoints').value);
+        const dueDate = new Date(document.getElementById('dueDate').value);
+
+        if (!classId || !title || !dueDate) {
+          alert('Please fill in all required fields');
+          return;
+        }
+
+        try {
+          // Ensure general course exists
+          const courseId = await ensureGeneralCourse(classId);
+          
+          // Create assignment
+          const assignmentId = `assignment_${Date.now()}`;
+          await setDoc(doc(db, "assignment", assignmentId), {
+            courseId: courseId,
+            title: title,
+            description: description,
+            openAt: serverTimestamp(),
+            dueAt: dueDate,
+            maxPoints: maxPoints,
+            allowedFormats: ["pdf", "java", "txt", "py", "html"],
+            createdAt: serverTimestamp()
+          });
+
+          alert('Assignment created successfully!');
+          bootstrap.Modal.getInstance(document.getElementById('createAssignmentModal')).hide();
+          document.getElementById('assignmentForm').reset();
+          
+          // Refresh classes to show updated info
+          loadClasses();
+        } catch (error) {
+          console.error("Error creating assignment:", error);
+          alert('Failed to create assignment: ' + error.message);
+        }
+      });
+
+      // Set default due date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('dueDate').value = tomorrow.toISOString().slice(0, 16);
+
+      // Auth state change
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUser = user;
+          await loadClasses();
+        } else {
+          window.location.href = '../login.html';
+        }
+      });
+    </script>
   </body>
 </html>
