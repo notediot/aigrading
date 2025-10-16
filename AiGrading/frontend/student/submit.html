@@ -49,7 +49,10 @@
       <form id="submitForm">
         <div class="mb-3">
           <label for="fileUpload" class="form-label">Upload file</label>
-          <input class="form-control" type="file" id="fileUpload" required>
+          <input class="form-control" type="file" id="fileUpload" accept=".txt,.java,.py,.html,.css,.js" required>
+          <div class="form-text">Accepted formats: .txt, .java, .py, .html, .css, .js</div>
+          <div id="fileError" class="text-danger mt-1" style="display: none;"></div>
+          <div id="fileInfo" class="text-success mt-1" style="display: none;"></div>
         </div>
         <div class="mb-3">
           <label for="notes" class="form-label">Notes (optional)</label>
@@ -78,43 +81,159 @@
       </div>
     </div>
 
-    <script>
-      window.__demo = {
-        "lecturers":[{"id":"L001","name":"Dr. Ada Lee"},{"id":"L002","name":"Prof. Kelvin Chan"}],
-        "classes":[
-          {"id":"SE101","name":"Software Engineering I","lecturerId":"L001","assignments":[{"id":"A1","title":"Lab 1 – Arrays","due":"2025-09-30"},{"id":"A2","title":"Essay – Software Ethics","due":"2025-10-10"}]},
-          {"id":"CS201","name":"Data Structures","lecturerId":"L002","assignments":[{"id":"A1","title":"Project 1 – REST API","due":"2025-09-25"}]}
-        ],
-        "rubricCriteria":[{"name":"Correctness","weight":40},{"name":"Style","weight":20},{"name":"Documentation","weight":20},{"name":"Efficiency","weight":20}]
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, doc, setDoc, serverTimestamp, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
       };
-      // Fill rubric preview
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // Fill rubric preview (static for now)
+      const rubric = [
+        { name: 'Correctness', weight: 40 },
+        { name: 'Style', weight: 20 },
+        { name: 'Documentation', weight: 20 },
+        { name: 'Efficiency', weight: 20 }
+      ];
       const rubricBody = document.getElementById('rubricPreview');
-      rubricBody.innerHTML = window.__demo.rubricCriteria.map(c => `<tr><td>${c.name}</td><td>${c.weight}%</td></tr>`).join('');
-      // Parse query params
+      rubricBody.innerHTML = rubric.map(c => `<tr><td>${c.name}</td><td>${c.weight}%</td></tr>`).join('');
+
       const params = new URLSearchParams(window.location.search);
-      const classId = params.get('classId') || '';
+      const classId = params.get('classId') || 'class123';
       const assignmentId = params.get('assignmentId') || '';
-      if (classId) {
-        const classData = window.__demo.classes.find(cl => cl.id === classId);
-        if (classData) {
-          document.getElementById('crumbClassLink').textContent = classData.id;
-          document.getElementById('crumbClassLink').href = `class-detail.html?classId=${classData.id}`;
-        }
-      }
-      if (assignmentId) {
-        document.getElementById('crumbAssignment').textContent = assignmentId;
-      }
-      if (classId && assignmentId) {
-        const asmt = window.__demo.classes.find(cl=>cl.id===classId).assignments.find(a=>a.id===assignmentId);
-        if (asmt) {
-          document.getElementById('submitTitle').innerText = `Submit: ${assignmentId} – ${asmt.title}`;
-        }
-      }
-      // Handle form submission
-      document.getElementById('submitForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        document.getElementById('toastBody').innerText = 'Submission uploaded successfully!';
+
+      document.getElementById('crumbClassLink').textContent = classId;
+      document.getElementById('crumbClassLink').href = `class-detail.html?classId=${classId}`;
+      document.getElementById('crumbAssignment').textContent = assignmentId;
+      document.getElementById('submitTitle').innerText = `Submit: ${assignmentId}`;
+
+      function showToast(msg) {
+        document.getElementById('toastBody').innerText = msg;
         new bootstrap.Toast(document.getElementById('liveToast')).show();
+      }
+
+      // File validation and handling
+      const allowedExtensions = ['.txt', '.java', '.py', '.html', '.css', '.js'];
+      let selectedFile = null;
+
+      function validateFile(file) {
+        const fileName = file.name.toLowerCase();
+        const isValid = allowedExtensions.some(ext => fileName.endsWith(ext));
+        
+        const fileError = document.getElementById('fileError');
+        const fileInfo = document.getElementById('fileInfo');
+        
+        if (!isValid) {
+          fileError.textContent = 'Invalid file type. Please select a .txt, .java, .py, .html, .css, or .js file.';
+          fileError.style.display = 'block';
+          fileInfo.style.display = 'none';
+          selectedFile = null;
+          return false;
+        } else {
+          fileError.style.display = 'none';
+          fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+          fileInfo.style.display = 'block';
+          selectedFile = file;
+          return true;
+        }
+      }
+
+      function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = e => reject(e);
+          reader.readAsText(file);
+        });
+      }
+
+      // File input change handler
+      document.getElementById('fileUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          validateFile(file);
+        } else {
+          selectedFile = null;
+          document.getElementById('fileError').style.display = 'none';
+          document.getElementById('fileInfo').style.display = 'none';
+        }
+      });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = '../login.html';
+          return;
+        }
+        const uq = query(collection(db, 'user'), where('authUid', '==', user.uid), limit(1));
+        const usnap = await getDocs(uq);
+        if (usnap.empty) return;
+        const userId = usnap.docs[0].id;
+
+        document.getElementById('submitForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          // Validate file before submission
+          if (!selectedFile || !validateFile(selectedFile)) {
+            showToast('Please select a valid file before submitting.');
+            return;
+          }
+
+          try {
+            // Read file content
+            const fileContent = await readFileAsText(selectedFile);
+            const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
+            
+            // Determine code language based on extension
+            const languageMap = {
+              'java': 'java',
+              'py': 'python', 
+              'html': 'html',
+              'css': 'css',
+              'js': 'javascript',
+              'txt': 'text'
+            };
+            const codeLanguage = languageMap[fileExtension] || 'text';
+
+            const attemptNo = 1; // simple first attempt
+            const submissionId = `${assignmentId}_${userId}_${attemptNo}`;
+            
+            await setDoc(doc(db, 'submission', submissionId), {
+              assignmentId: assignmentId,
+              courseId: `course_general_${classId}`,
+              studentId: userId,
+              attemptNo: attemptNo,
+              submittedAt: serverTimestamp(),
+              status: 'pending',
+              artifactUrls: [selectedFile.name], // Store filename
+              textAnswer: document.getElementById('notes').value || null,
+              codeLanguage: codeLanguage,
+              fileContent: fileContent, // Store actual file content
+              fileName: selectedFile.name,
+              fileSize: selectedFile.size,
+              checksum: null, // Could add file hash here later
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            showToast('Submission uploaded successfully!');
+            setTimeout(() => {
+              window.location.href = `submissions.html?classId=${classId}&assignmentId=${assignmentId}`;
+            }, 800);
+          } catch (err) {
+            console.error(err);
+            showToast('Failed to submit: ' + (err.message || 'Unknown error'));
+          }
+        });
       });
     </script>
   </body>

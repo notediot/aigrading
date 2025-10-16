@@ -61,6 +61,7 @@
           <tr>
             <th>Class</th>
             <th>Assignment</th>
+            <th>File</th>
             <th>Status</th>
             <th>Score</th>
             <th>Actions</th>
@@ -73,82 +74,153 @@
       <small class="text-muted">AI Grading Demo &copy; 2025</small>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <script>
-      window.__demo = {
-        "lecturers":[{"id":"L001","name":"Dr. Ada Lee"},{"id":"L002","name":"Prof. Kelvin Chan"}],
-        "classes":[
-          {"id":"SE101","name":"Software Engineering I","lecturerId":"L001","assignments":[{"id":"A1","title":"Lab 1 – Arrays","due":"2025-09-30"},{"id":"A2","title":"Essay – Software Ethics","due":"2025-10-10"}]},
-          {"id":"CS201","name":"Data Structures","lecturerId":"L002","assignments":[{"id":"A1","title":"Project 1 – REST API","due":"2025-09-25"}]}
-        ],
-        "students":[{"id":"S20721831","name":"Alice Chan"},{"id":"S20720001","name":"Bob Lee"},{"id":"S20719999","name":"Evan Ho"}],
-        "submissions":[
-          {"id":"SUB1","classId":"SE101","assignmentId":"A1","studentId":"S20721831","status":"Graded","score":88,"submitted":"2025-09-25","content":"// Code ..."},
-          {"id":"SUB3","classId":"SE101","assignmentId":"A2","studentId":"S20721831","status":"Grading","score":null,"submitted":"2025-10-01","content":"Alice's essay ..."},
-          {"id":"SUB5","classId":"CS201","assignmentId":"A1","studentId":"S20721831","status":"Resolved","score":72,"submitted":"2025-09-20","content":"Alice's REST API ..."}
-        ],
-        "appeals":[
-          {"id":"APP2","submissionId":"SUB5","studentId":"S20721831","classId":"CS201","assignmentId":"A1","status":"Resolved","submitted":"2025-09-21",
-            "timeline":[{"status":"Submitted","date":"2025-09-21","note":"Student requested regrade."},{"status":"Under Review","date":"2025-09-22","note":"Instructor reviewing submission."},{"status":"Resolved","date":"2025-09-23","note":"Appeal denied. Score remains 72."}]}
-        ]
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
       };
-      const studentId = 'S20721831';
-      const submissions = window.__demo.submissions.filter(s => s.studentId === studentId);
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
       const classFilter = document.getElementById('filterClass');
       const assignmentFilter = document.getElementById('filterAssignment');
       const tableBody = document.getElementById('submissionsTable');
-      // Populate class filter options
-      const studentClasses = [...new Set(submissions.map(s => s.classId))];
-      for (const cid of studentClasses) {
-        const opt = document.createElement('option');
-        opt.value = cid; opt.textContent = cid;
-        classFilter.appendChild(opt);
-      }
-      function updateAssignmentOptions() {
-        assignmentFilter.innerHTML = '<option value="">All Assignments</option>';
-        const cid = classFilter.value;
-        let assignments = [];
-        if (cid) {
-          const cl = window.__demo.classes.find(c => c.id === cid);
-          if (cl) assignments = cl.assignments.map(a => a.id);
-        } else {
-          assignments = [...new Set(submissions.map(s => s.assignmentId))];
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = '../login.html';
+          return;
         }
-        for (const aid of assignments) {
+        const uq = query(collection(db, 'user'), where('authUid', '==', user.uid), limit(1));
+        const usnap = await getDocs(uq);
+        if (usnap.empty) return;
+        const userId = usnap.docs[0].id;
+
+        // Load submissions for this user
+        const sq = query(collection(db, 'submission'), where('studentId', '==', userId));
+        const ssnap = await getDocs(sq);
+        const submissions = ssnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Populate class filter
+        const classIds = [...new Set(submissions.map(s => (s.courseId || '').replace('course_general_', '')))].filter(Boolean);
+        for (const cid of classIds) {
           const opt = document.createElement('option');
-          opt.value = aid; opt.textContent = aid;
-          assignmentFilter.appendChild(opt);
+          opt.value = cid; opt.textContent = cid;
+          classFilter.appendChild(opt);
         }
-      }
-      classFilter.addEventListener('change', () => { updateAssignmentOptions(); renderTable(); });
-      assignmentFilter.addEventListener('change', () => { renderTable(); });
-      function renderTable() {
-        const cid = classFilter.value;
-        const aid = assignmentFilter.value;
-        let filtered = submissions;
-        if (cid) filtered = filtered.filter(s => s.classId === cid);
-        if (aid) filtered = filtered.filter(s => s.assignmentId === aid);
-        tableBody.innerHTML = filtered.map(s => {
-          let scoreText = s.score !== null ? `${s.score}/100` : '—';
-          if (s.status === 'Queued' || s.status === 'Grading') scoreText = '—';
-          let actions = '<a href="#" class="btn btn-sm btn-outline-secondary me-1">View</a>';
-          const appeal = window.__demo.appeals.find(a => a.submissionId === s.id);
-          if (s.status === 'Graded' && !appeal) {
-            actions += `<a href="appeal.html?submissionId=${s.id}" class="btn btn-sm btn-outline-warning">Appeal</a>`;
-          } else if (appeal) {
-            actions += `<a href="regrade-status.html?appealId=${appeal.id}" class="btn btn-sm btn-outline-info">View Appeal</a>`;
+
+        function updateAssignmentOptions() {
+          assignmentFilter.innerHTML = '<option value="">All Assignments</option>';
+          const cid = classFilter.value;
+          let assignmentIds = [];
+          if (cid) {
+            assignmentIds = submissions.filter(s => s.courseId === `course_general_${cid}`).map(s => s.assignmentId);
+          } else {
+            assignmentIds = submissions.map(s => s.assignmentId);
           }
-          return `<tr><td>${s.classId}</td><td>${s.assignmentId}</td><td>${s.status}</td><td>${scoreText}</td><td>${actions}</td></tr>`;
-        }).join('');
-      }
-      // Initial population
-      updateAssignmentOptions();
-      // Apply query param filter if provided
-      const params = new URLSearchParams(window.location.search);
-      const paramClass = params.get('classId');
-      const paramAsmt = params.get('assignmentId');
-      if (paramClass) { classFilter.value = paramClass; updateAssignmentOptions(); }
-      if (paramAsmt) { assignmentFilter.value = paramAsmt; }
-      renderTable();
+          assignmentIds = [...new Set(assignmentIds)];
+          for (const aid of assignmentIds) {
+            const opt = document.createElement('option'); opt.value = aid; opt.textContent = aid; assignmentFilter.appendChild(opt);
+          }
+        }
+
+        function formatFileSize(bytes) {
+          if (bytes === 0) return '0 B';
+          const k = 1024;
+          const sizes = ['B', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function getFileIcon(fileName) {
+          const ext = fileName.split('.').pop().toLowerCase();
+          const iconMap = {
+            'java': '☕',
+            'py': '🐍',
+            'html': '🌐',
+            'css': '🎨',
+            'js': '📜',
+            'txt': '📄'
+          };
+          return iconMap[ext] || '📄';
+        }
+
+        function downloadFile(submissionId) {
+          const submission = submissions.find(s => s.id === submissionId);
+          if (!submission || !submission.fileContent || !submission.fileName) return;
+          
+          const blob = new Blob([submission.fileContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = submission.fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
+        // Make downloadFile globally accessible
+        window.downloadFile = downloadFile;
+
+        function renderTable() {
+          const cid = classFilter.value;
+          const aid = assignmentFilter.value;
+          let filtered = submissions;
+          if (cid) filtered = filtered.filter(s => s.courseId === `course_general_${cid}`);
+          if (aid) filtered = filtered.filter(s => s.assignmentId === aid);
+          tableBody.innerHTML = filtered.map(s => {
+            const scoreText = typeof s.score === 'number' ? `${s.score}/100` : (s.status === 'graded' ? `${s.score || 0}/100` : '—');
+            
+            // File information
+            let fileInfo = 'No file';
+            if (s.fileName) {
+              const fileSize = s.fileSize ? formatFileSize(s.fileSize) : '';
+              const fileIcon = getFileIcon(s.fileName);
+              const language = s.codeLanguage ? ` (${s.codeLanguage})` : '';
+              fileInfo = `${fileIcon} ${s.fileName}${language}${fileSize ? ` - ${fileSize}` : ''}`;
+            }
+            
+            // Actions
+            const viewBtn = s.fileName ? 
+              `<button onclick="downloadFile('${s.id}')" class="btn btn-sm btn-outline-primary me-1">Download</button>` : 
+              '<span class="text-muted">No file</span>';
+            const appealBtn = s.status === 'graded' ? 
+              `<button class="btn btn-sm btn-outline-warning">Appeal</button>` : '';
+            
+            return `<tr>
+              <td>${(s.courseId || '').replace('course_general_', '')}</td>
+              <td>${s.assignmentId}</td>
+              <td><small>${fileInfo}</small></td>
+              <td><span class="badge bg-${s.status === 'graded' ? 'success' : s.status === 'pending' ? 'warning' : 'secondary'}">${s.status}</span></td>
+              <td>${scoreText}</td>
+              <td>${viewBtn} ${appealBtn}</td>
+            </tr>`;
+          }).join('');
+        }
+
+        // Init
+        updateAssignmentOptions();
+        const params = new URLSearchParams(window.location.search);
+        const paramClass = params.get('classId');
+        const paramAsmt = params.get('assignmentId');
+        if (paramClass) { classFilter.value = paramClass; updateAssignmentOptions(); }
+        if (paramAsmt) { assignmentFilter.value = paramAsmt; }
+        renderTable();
+
+        classFilter.addEventListener('change', () => { updateAssignmentOptions(); renderTable(); });
+        assignmentFilter.addEventListener('change', () => { renderTable(); });
+      });
     </script>
   </body>
 </html>

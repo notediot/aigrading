@@ -72,5 +72,79 @@
       <small class="text-muted">AI Grading Demo &copy; 2025</small>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      async function loadStudentClasses(userId) {
+        // Find all enrollments for this student
+        const enrollQ = query(collection(db, 'enrollment'), where('userId', '==', userId), where('roleInCourse', '==', 'student'));
+        const enrollSnap = await getDocs(enrollQ);
+        const courseIds = enrollSnap.docs.map(d => d.data().courseId);
+        // Map to classIds via courses
+        const classes = [];
+        for (const courseId of courseIds) {
+          const courseQ = query(collection(db, 'course'), where('__name__', '==', courseId), limit(1));
+          const courseSnap = await getDocs(courseQ);
+          if (!courseSnap.empty) {
+            const course = courseSnap.docs[0].data();
+            const classId = course.classId;
+            const classQ = query(collection(db, 'class'), where('__name__', '==', classId), limit(1));
+            const classSnap = await getDocs(classQ);
+            if (!classSnap.empty) {
+              const clsDoc = classSnap.docs[0];
+              classes.push({ id: clsDoc.id, ...clsDoc.data() });
+            }
+          }
+        }
+        renderClasses(classes);
+      }
+
+      function renderClasses(classes) {
+        const container = document.querySelector('.row');
+        if (!classes.length) {
+          container.innerHTML = '<div class="col-12"><div class="alert alert-info">No enrolled classes yet.</div></div>';
+          return;
+        }
+        container.innerHTML = classes.map(cls => `
+          <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title">${cls.className || cls.id}</h5>
+                <p class="card-text">Academic Year: ${cls.academicYear || ''}</p>
+                <a href="class-detail.html?classId=${cls.id}" class="btn btn-outline-primary">Open Class</a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = '../login.html';
+          return;
+        }
+        // Resolve userId from authUid
+        const uq = query(collection(db, 'user'), where('authUid', '==', user.uid), limit(1));
+        const usnap = await getDocs(uq);
+        if (usnap.empty) return;
+        const userId = usnap.docs[0].id;
+        await loadStudentClasses(userId);
+      });
+    </script>
   </body>
 </html>
