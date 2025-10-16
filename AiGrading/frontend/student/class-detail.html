@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Class Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+      .breadcrumb { --bs-breadcrumb-divider: '›'; }
+      .tab-content > .tab-pane { padding-top: 1rem; }
+      .nav-tabs .nav-link { cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="../student/dashboard.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#studentNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="studentNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link active" href="classes.html">Classes</a></li>
+            <li class="nav-item"><a class="nav-link" href="submissions.html">Submissions</a></li>
+          </ul>
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="roleMenu" role="button" data-bs-toggle="dropdown">Student</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="../lecturer/dashboard.html">Switch to Lecturer</a></li>
+                <li><a class="dropdown-item" href="../admin/dashboard.html">Switch to Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../logout.html">Log Out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container my-4">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="dashboard.html">Student</a></li>
+          <li class="breadcrumb-item"><a href="classes.html">Classes</a></li>
+          <li id="breadcrumb-class" class="breadcrumb-item active" aria-current="page">Class</li>
+        </ol>
+      </nav>
+      <h3 id="classTitle" class="mb-3">Class Name</h3>
+      <!-- Class Tabs -->
+      <ul class="nav nav-tabs" id="classTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="ann-tab" data-bs-toggle="tab" data-bs-target="#tab-announcements" type="button" role="tab" aria-controls="tab-announcements" aria-selected="true">Announcements</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="assign-tab" data-bs-toggle="tab" data-bs-target="#tab-assignments" type="button" role="tab" aria-controls="tab-assignments" aria-selected="false">Assignments</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="grades-tab" data-bs-toggle="tab" data-bs-target="#tab-grades" type="button" role="tab" aria-controls="tab-grades" aria-selected="false">My Grades</button>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-announcements" role="tabpanel" aria-labelledby="ann-tab">
+          <ul id="ann-list" class="list-group list-group-flush"></ul>
+        </div>
+        <div class="tab-pane fade" id="tab-assignments" role="tabpanel" aria-labelledby="assign-tab">
+          <ul id="assign-list" class="list-group"></ul>
+        </div>
+        <div class="tab-pane fade" id="tab-grades" role="tabpanel" aria-labelledby="grades-tab">
+          <ul id="grades-list" class="list-group"></ul>
+        </div>
+      </div>
+    </main>
+    <footer class="bg-light text-center py-3 mt-5">
+      <small class="text-muted">AI Grading Demo &copy; 2025</small>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+      window.__demo = {
+        "lecturers": [{"id": "L001", "name": "Dr. Ada Lee"}, {"id": "L002", "name": "Prof. Kelvin Chan"}],
+        "classes": [
+          {"id": "SE101", "name": "Software Engineering I", "lecturerId": "L001",
+            "assignments": [{"id": "A1", "title": "Lab 1 – Arrays", "due": "2025-09-30"}, {"id": "A2", "title": "Essay – Software Ethics", "due": "2025-10-10"}],
+            "students": ["S20721831", "S20720001"],
+            "announcements": [{"date": "2025-10-01", "text": "Midterm exam scheduled for Oct 20."}, {"date": "2025-09-20", "text": "Welcome to SE101! Please read the syllabus."}]
+          },
+          {"id": "CS201", "name": "Data Structures", "lecturerId": "L002",
+            "assignments": [{"id": "A1", "title": "Project 1 – REST API", "due": "2025-09-25"}],
+            "students": ["S20721831", "S20719999"],
+            "announcements": [{"date": "2025-09-15", "text": "Project 1 guidelines posted."}]
+          }
+        ],
+        "students": [{"id": "S20721831", "name": "Alice Chan"}, {"id": "S20720001", "name": "Bob Lee"}, {"id": "S20719999", "name": "Evan Ho"}],
+        "submissions": [
+          {"id": "SUB1","classId":"SE101","assignmentId":"A1","studentId":"S20721831","status":"Graded","score":88,"submitted":"2025-09-25","content":"// Code ..."},
+          {"id": "SUB2","classId":"SE101","assignmentId":"A1","studentId":"S20720001","status":"Appealed","score":72,"submitted":"2025-09-25","content":"// Code ..."},
+          {"id": "SUB3","classId":"SE101","assignmentId":"A2","studentId":"S20721831","status":"Grading","score":null,"submitted":"2025-10-01","content":"Alice's essay..."},
+          {"id": "SUB4","classId":"SE101","assignmentId":"A2","studentId":"S20720001","status":"Queued","score":null,"submitted":"2025-10-02","content":"Bob's essay..."},
+          {"id": "SUB5","classId":"CS201","assignmentId":"A1","studentId":"S20721831","status":"Resolved","score":72,"submitted":"2025-09-20","content":"Alice's REST API..."},
+          {"id": "SUB6","classId":"CS201","assignmentId":"A1","studentId":"S20719999","status":"Graded","score":90,"submitted":"2025-09-20","content":"Evan's REST API..."}
+        ],
+        "rubricCriteria":[{"name":"Correctness","weight":40},{"name":"Style","weight":20},{"name":"Documentation","weight":20},{"name":"Efficiency","weight":20}],
+        "appeals":[
+          {"id":"APP1","submissionId":"SUB2","studentId":"S20720001","classId":"SE101","assignmentId":"A1","status":"Under Review","submitted":"2025-09-26","justification":"I believe my solution works for all cases.","timeline":[{"status":"Submitted","date":"2025-09-26","note":"Student requested regrade."},{"status":"Under Review","date":"2025-09-27","note":"Instructor re-evaluating."}]},
+          {"id":"APP2","submissionId":"SUB5","studentId":"S20721831","classId":"CS201","assignmentId":"A1","status":"Resolved","submitted":"2025-09-21","justification":"The grading didn't account for an important feature I implemented.","timeline":[{"status":"Submitted","date":"2025-09-21","note":"Student requested regrade."},{"status":"Under Review","date":"2025-09-22","note":"Instructor reviewing submission."},{"status":"Resolved","date":"2025-09-23","note":"Appeal denied. Score remains 72."}]}
+        ]
+      };
+      // Get class from URL
+      const params = new URLSearchParams(window.location.search);
+      const classId = params.get('classId') || '';
+      const studentId = 'S20721831';
+      const classData = window.__demo.classes.find(c => c.id === classId) || window.__demo.classes[0];
+      // Update breadcrumb and header
+      if (classData) {
+        document.getElementById('breadcrumb-class').textContent = classData.id;
+        document.getElementById('classTitle').innerText = `${classData.id} – ${classData.name} (Lecturer: ${window.__demo.lecturers.find(l=>l.id===classData.lecturerId).name})`;
+      }
+      // Populate announcements
+      const annList = document.getElementById('ann-list');
+      annList.innerHTML = classData.announcements.map(a => `<li class="list-group-item"><strong>${a.date}:</strong> ${a.text}</li>`).join('');
+      // Populate assignments list
+      const assignList = document.getElementById('assign-list');
+      assignList.innerHTML = classData.assignments.map(asmt => {
+        const sub = window.__demo.submissions.find(s => s.classId === classData.id && s.assignmentId === asmt.id && s.studentId === studentId);
+        let statusText = 'Not submitted';
+        let actionLink = '';
+        if (sub) {
+          if (sub.status === 'Queued' || sub.status === 'Grading') {
+            statusText = 'Submitted (in progress)';
+          } else if (sub.status === 'Graded') {
+            statusText = 'Graded';
+          } else if (sub.status === 'Appealed') {
+            statusText = 'Graded (appealed)';
+          } else if (sub.status === 'Resolved') {
+            statusText = 'Graded';
+          }
+        }
+        if (!sub) {
+          actionLink = `<a href="submit.html?classId=${classData.id}&assignmentId=${asmt.id}" class="btn btn-sm btn-outline-primary ms-2">Submit</a>`;
+        }
+        return `<li class="list-group-item d-flex justify-content-between align-items-center"><div><strong>${asmt.id}</strong> – ${asmt.title} <small class="text-muted">(Due ${asmt.due})</small><br>Status: ${statusText}</div>${actionLink}</li>`;
+      }).join('');
+      // Populate grades list
+      const gradesList = document.getElementById('grades-list');
+      gradesList.innerHTML = classData.assignments.map(asmt => {
+        const sub = window.__demo.submissions.find(s => s.classId === classData.id && s.assignmentId === asmt.id && s.studentId === studentId);
+        let gradeText = '—';
+        if (sub) {
+          if (sub.status === 'Graded' || sub.status === 'Appealed' || sub.status === 'Resolved') {
+            gradeText = `${sub.score}/100`;
+          } else if (sub.status === 'Queued' || sub.status === 'Grading') {
+            gradeText = '(Pending)';
+          }
+        } else {
+          gradeText = 'Not submitted';
+        }
+        return `<li class="list-group-item d-flex justify-content-between"><span>${asmt.id} – ${asmt.title}</span><strong>${gradeText}</strong></li>`;
+      }).join('');
+    </script>
+  </body>
+</html>

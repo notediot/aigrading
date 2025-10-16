@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Grade Queue</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+      .breadcrumb { --bs-breadcrumb-divider: '›'; }
+      table td, table th { vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="../lecturer/dashboard.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#lecturerNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="lecturerNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="classes.html">Classes</a></li>
+            <li class="nav-item"><a class="nav-link active" href="grade-queue.html">Grade Queue</a></li>
+          </ul>
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="roleMenu" role="button" data-bs-toggle="dropdown">Lecturer</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="../student/dashboard.html">Switch to Student</a></li>
+                <li><a class="dropdown-item" href="../admin/dashboard.html">Switch to Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../logout.html">Log Out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container my-4">
+      <nav aria-label="breadcrumb"><ol class="breadcrumb" id="breadcrumb"></ol></nav>
+      <h2 class="mb-4">Grade Queue</h2>
+      <div class="mb-3">
+        <select id="queueClassFilter" class="form-select form-select-sm d-inline-block w-auto me-2">
+          <option value="">All Classes</option>
+        </select>
+        <select id="queueAssignmentFilter" class="form-select form-select-sm d-inline-block w-auto me-2">
+          <option value="">All Assignments</option>
+        </select>
+        <select id="queueStatusFilter" class="form-select form-select-sm d-inline-block w-auto">
+          <option value="">All Statuses</option>
+          <option value="Queued">Queued</option>
+          <option value="Grading">Grading</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <button id="runAiButton" class="btn btn-outline-primary btn-sm">Run AI Draft Grade</button>
+      </div>
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAll"></th>
+            <th>Class</th>
+            <th>Assignment</th>
+            <th>Student</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="queueTable"></tbody>
+      </table>
+    </main>
+    <footer class="bg-light text-center py-3 mt-5"><small class="text-muted">AI Grading Demo &copy; 2025</small></footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+      <div id="liveToast" class="toast text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body" id="toastBody">Action performed.</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__demo = {
+        "classes":[{"id":"SE101","name":"Software Engineering I","lecturerId":"L001","assignments":[{"id":"A1","title":"Lab 1 – Arrays"},{"id":"A2","title":"Essay – Software Ethics"}]}],
+        "students":[{"id":"S20721831","name":"Alice Chan"},{"id":"S20720001","name":"Bob Lee"}],
+        "submissions":[
+          {"id":"SUB3","classId":"SE101","assignmentId":"A2","studentId":"S20721831","status":"Grading","score":null,"submitted":"2025-10-01","content":"Alice's essay..."},
+          {"id":"SUB4","classId":"SE101","assignmentId":"A2","studentId":"S20720001","status":"Queued","score":null,"submitted":"2025-10-02","content":"Bob's essay..."}
+        ]
+      };
+      const lecturerClasses = window.__demo.classes.filter(c => c.lecturerId === 'L001').map(c => c.id);
+      const queueSubs = window.__demo.submissions.filter(s => lecturerClasses.includes(s.classId) && (s.status === 'Queued' || s.status === 'Grading'));
+      const classSelect = document.getElementById('queueClassFilter');
+      const assignmentSelect = document.getElementById('queueAssignmentFilter');
+      const statusSelect = document.getElementById('queueStatusFilter');
+      const queueTable = document.getElementById('queueTable');
+      // Populate class filter options
+      for (const cid of lecturerClasses) {
+        const opt = document.createElement('option'); opt.value = cid; opt.textContent = cid; classSelect.appendChild(opt);
+      }
+      function populateAssignmentOptions(classId) {
+        assignmentSelect.innerHTML = '<option value="">All Assignments</option>';
+        let assignments = [];
+        if (classId) {
+          const cl = window.__demo.classes.find(c => c.id === classId);
+          if (cl) assignments = cl.assignments.map(a => a.id);
+        } else {
+          assignments = [...new Set(queueSubs.map(s => s.assignmentId))];
+        }
+        for (const aid of assignments) {
+          const opt = document.createElement('option'); opt.value = aid; opt.textContent = aid; assignmentSelect.appendChild(opt);
+        }
+      }
+      classSelect.addEventListener('change', () => { populateAssignmentOptions(classSelect.value); renderQueue(); });
+      assignmentSelect.addEventListener('change', () => renderQueue());
+      statusSelect.addEventListener('change', () => renderQueue());
+      document.getElementById('selectAll').addEventListener('change', function() {
+        const checked = this.checked;
+        document.querySelectorAll('#queueTable input[type=checkbox]').forEach(cb => cb.checked = checked);
+      });
+      document.getElementById('runAiButton').addEventListener('click', () => {
+        const selectedCount = document.querySelectorAll('#queueTable input[type=checkbox]:checked').length;
+        document.getElementById('toastBody').innerText = selectedCount === 0 ? 'No submissions selected.' : `AI draft grading started for ${selectedCount} submission(s).`;
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+      function renderQueue() {
+        const cid = classSelect.value;
+        const aid = assignmentSelect.value;
+        const status = statusSelect.value;
+        let filtered = queueSubs;
+        if (cid) filtered = filtered.filter(s => s.classId === cid);
+        if (aid) filtered = filtered.filter(s => s.assignmentId === aid);
+        if (status) filtered = filtered.filter(s => s.status === status);
+        queueTable.innerHTML = filtered.map(s => {
+          const student = window.__demo.students.find(st => st.id === s.studentId);
+          return `<tr>
+            <td><input type="checkbox"></td>
+            <td>${s.classId}</td>
+            <td>${s.assignmentId}</td>
+            <td>${student.name}</td>
+            <td>${s.status}</td>
+            <td>${s.submitted}</td>
+            <td><a href="grade-detail.html?submissionId=${s.id}" class="btn btn-sm btn-outline-primary">Open</a></td>
+          </tr>`;
+        }).join('');
+      }
+      // Initialize filters and breadcrumb
+      populateAssignmentOptions('');
+      const params = new URLSearchParams(window.location.search);
+      const paramClass = params.get('classId');
+      const paramAsmt = params.get('assignmentId');
+      let crumbHtml = '<li class="breadcrumb-item"><a href="dashboard.html">Lecturer</a></li>';
+      if (paramClass) {
+        crumbHtml += '<li class="breadcrumb-item"><a href="classes.html">Classes</a></li>';
+        crumbHtml += `<li class="breadcrumb-item"><a href="class-detail.html?classId=${paramClass}">${paramClass}</a></li>`;
+        if (paramAsmt) { crumbHtml += `<li class="breadcrumb-item">${paramAsmt}</li>`; }
+      }
+      crumbHtml += '<li class="breadcrumb-item active" aria-current="page">Grade Queue</li>';
+      document.getElementById('breadcrumb').innerHTML = crumbHtml;
+      if (paramClass) { classSelect.value = paramClass; populateAssignmentOptions(paramClass); }
+      if (paramAsmt) { assignmentSelect.value = paramAsmt; }
+      renderQueue();
+    </script>
+  </body>
+</html>

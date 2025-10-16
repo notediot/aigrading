@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Assignment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>.breadcrumb { --bs-breadcrumb-divider: '›'; }</style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="../lecturer/dashboard.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#lecturerNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="lecturerNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="classes.html">Classes</a></li>
+            <li class="nav-item"><a class="nav-link" href="grade-queue.html">Grade Queue</a></li>
+          </ul>
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="roleMenu" role="button" data-bs-toggle="dropdown">Lecturer</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="../student/dashboard.html">Switch to Student</a></li>
+                <li><a class="dropdown-item" href="../admin/dashboard.html">Switch to Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../logout.html">Log Out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container my-4">
+      <nav aria-label="breadcrumb"><ol class="breadcrumb" id="assignBreadcrumb"></ol></nav>
+      <h2 class="mb-4">Create Assignment</h2>
+      <form id="assignmentForm">
+        <div class="mb-3">
+          <label for="assignTitle" class="form-label">Title</label>
+          <input type="text" class="form-control" id="assignTitle" required>
+        </div>
+        <div class="mb-3">
+          <label for="assignDesc" class="form-label">Description</label>
+          <textarea class="form-control" id="assignDesc" rows="3" required></textarea>
+        </div>
+        <div class="mb-3 row">
+          <div class="col-md-6">
+            <label for="assignDue" class="form-label">Due Date</label>
+            <input type="date" class="form-control" id="assignDue" required>
+          </div>
+          <div class="col-md-6">
+            <label for="rubricSelect" class="form-label">Rubric</label>
+            <select id="rubricSelect" class="form-select">
+              <option>Default Rubric (4 criteria)</option>
+            </select>
+            <small><a href="#" class="text-decoration-none">Build new rubric</a></small>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="modelSelect" class="form-label">AI Model</label>
+          <select id="modelSelect

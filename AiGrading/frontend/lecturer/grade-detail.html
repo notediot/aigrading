@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Grade Submission</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+      .breadcrumb { --bs-breadcrumb-divider: '›'; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="../lecturer/dashboard.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#lecturerNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="lecturerNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="classes.html">Classes</a></li>
+            <li class="nav-item"><a class="nav-link" href="grade-queue.html">Grade Queue</a></li>
+          </ul>
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="roleMenu" role="button" data-bs-toggle="dropdown">Lecturer</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="../student/dashboard.html">Switch to Student</a></li>
+                <li><a class="dropdown-item" href="../admin/dashboard.html">Switch to Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../logout.html">Log Out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container-fluid my-4">
+      <nav aria-label="breadcrumb"><ol class="breadcrumb" id="gradeBreadcrumb"></ol></nav>
+      <div class="row">
+        <div class="col-lg-6 mb-3">
+          <h6 id="submissionInfo" class="text-muted"></h6>
+          <pre id="submissionContent" class="bg-light p-3 rounded" style="min-height: 200px;"></pre>
+        </div>
+        <div class="col-lg-6">
+          <h5>Rubric Evaluation</h5>
+          <div id="rubricForm"></div>
+          <div class="mt-3">
+            <button class="btn btn-success me-2" id="btnAcceptDraft">Accept AI Draft</button>
+            <button class="btn btn-primary me-2" id="btnEditPublish">Edit & Publish</button>
+            <button class="btn btn-warning" id="btnRequestReview">Request Human Review</button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="bg-light text-center py-3 mt-5"><small class="text-muted">AI Grading Demo &copy; 2025</small></footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+      <div id="liveToast" class="toast text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body" id="toastBody">Action performed.</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__demo = {
+        "classes":[{"id":"SE101","name":"Software Engineering I","lecturerId":"L001","assignments":[{"id":"A1","title":"Lab 1 – Arrays"},{"id":"A2","title":"Essay – Software Ethics"}]}],
+        "students":[{"id":"S20721831","name":"Alice Chan"},{"id":"S20720001","name":"Bob Lee"}],
+        "submissions":[
+          {"id":"SUB3","classId":"SE101","assignmentId":"A2","studentId":"S20721831","status":"Grading","score":null,"submitted":"2025-10-01","content":"Alice's essay on Software Ethics... (Lorem ipsum dolor sit amet, ...)"},
+          {"id":"SUB4","classId":"SE101","assignmentId":"A2","studentId":"S20720001","status":"Queued","score":null,"submitted":"2025-10-02","content":"Bob's essay on Software Ethics... (Lorem ipsum dolor sit amet, ...)"}
+        ],
+        "rubricCriteria":[{"name":"Correctness","weight":40},{"name":"Style","weight":20},{"name":"Documentation","weight":20},{"name":"Efficiency","weight":20}]
+      };
+      const suggestions = {
+        "SUB3": {"scores":[30,18,17,18],"comments":["Covers main points with some gaps.","Writing style is clear.","References are provided.","N/A for efficiency."]},
+        "SUB4": {"scores":[25,15,15,15],"comments":["Several requirements missing.","Writing is unclear in parts.","Needs more references.","N/A for efficiency."]}
+      };
+      const params = new URLSearchParams(window.location.search);
+      const subId = params.get('submissionId') || 'SUB3';
+      const submission = window.__demo.submissions.find(s => s.id === subId);
+      const classId = submission.classId;
+      const assignmentId = submission.assignmentId;
+      // Breadcrumb
+      let crumbHtml = '<li class="breadcrumb-item"><a href="dashboard.html">Lecturer</a></li>';
+      crumbHtml += `<li class="breadcrumb-item"><a href="classes.html">Classes</a></li>`;
+      crumbHtml += `<li class="breadcrumb-item"><a href="class-detail.html?classId=${classId}">${classId}</a></li>`;
+      crumbHtml += `<li class="breadcrumb-item"><a href="grade-queue.html?classId=${classId}&assignmentId=${assignmentId}">${assignmentId}</a></li>`;
+      crumbHtml += '<li class="breadcrumb-item active" aria-current="page">Grade</li>';
+      document.getElementById('gradeBreadcrumb').innerHTML = crumbHtml;
+      // Submission info
+      const student = window.__demo.students.find(st => st.id === submission.studentId);
+      document.getElementById('submissionInfo').innerText = `${student.name} – submitted ${submission.submitted}`;
+      document.getElementById('submissionContent').textContent = submission.content;
+      // Rubric form
+      const rubricContainer = document.getElementById('rubricForm');
+      const subSuggest = suggestions[submission.id] || null;
+      if (subSuggest) {
+        window.__demo.rubricCriteria.forEach((crit, i) => {
+          const score = subSuggest.scores[i];
+          const comment = subSuggest.comments[i];
+          const critDiv = document.createElement('div');
+          critDiv.className = 'mb-3';
+          critDiv.innerHTML = `<strong>${crit.name} (${crit.weight}%)</strong><br>
+            <div class="input-group input-group-sm mb-2" style="max-width: 6rem;">
+              <input type="number" class="form-control" value="${score}">
+              <span class="input-group-text">/${crit.weight}</span>
+            </div>
+            <textarea class="form-control form-control-sm" rows="2">${comment}</textarea>`;
+          rubricContainer.appendChild(critDiv);
+        });
+      } else {
+        window.__demo.rubricCriteria.forEach((crit) => {
+          const critDiv = document.createElement('div');
+          critDiv.className = 'mb-3';
+          critDiv.innerHTML = `<strong>${crit.name} (${crit.weight}%)</strong><br>
+            <div class="input-group input-group-sm mb-2" style="max-width: 6rem;">
+              <input type="number" class="form-control" placeholder="0">
+              <span class="input-group-text">/${crit.weight}</span>
+            </div>
+            <textarea class="form-control form-control-sm" rows="2"></textarea>`;
+          rubricContainer.appendChild(critDiv);
+        });
+      }
+      // Actions
+      document.getElementById('btnAcceptDraft').addEventListener('click', () => {
+        document.getElementById('toastBody').innerText = 'Draft accepted. Grade published.';
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+      document.getElementById('btnEditPublish').addEventListener('click', () => {
+        document.getElementById('toastBody').innerText = 'Changes saved. Grade published.';
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+      document.getElementById('btnRequestReview').addEventListener('click', () => {
+        document.getElementById('toastBody').innerText = 'Submission sent for human review.';
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+    </script>
+  </body>
+</html>

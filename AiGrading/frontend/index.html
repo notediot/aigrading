@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Grading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+      .breadcrumb { --bs-breadcrumb-divider: '›'; }
+      .card { border-radius: .5rem; }
+      .card.shadow-sm { box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075); }
+    </style>
+  </head>
+  <body>
+    <!-- Nav: keep only Log In to reduce duplication -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="login.html">Log In</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container my-5">
+      <!-- Hero: single primary CTA (Sign Up) + subtle login text -->
+      <div class="py-5 text-center">
+        <h1 class="display-4">AI-Powered Grading Made Easy</h1>
+        <p class="lead">Automate assignment grading, provide instant feedback, and streamline regrades with AI.</p>
+        <div class="d-flex justify-content-center">
+          <a href="signup.html" class="btn btn-primary btn-lg">Get Started — Free</a>
+        </div>
+        <div class="mt-3">
+          <small class="text-muted">Already have an account? <a href="login.html">Log in</a></small>
+        </div>
+      </div>
+
+      <!-- Role Cards: informative only (no extra sign-up/sign-in links) -->
+      <div class="row text-center mb-5">
+        <div class="col-md-4 mb-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Students</h5>
+              <p class="card-text">Submit assignments and receive fast, fair grades. View feedback and appeal if needed.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Lecturers</h5>
+              <p class="card-text">Auto-grade submissions with AI, manage classes and rubrics, and handle regrade requests efficiently.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Admins</h5>
+              <p class="card-text">Monitor usage and costs, manage API keys, and oversee system-wide grading operations.</p>
+              <small class="text-muted d-block">Admin accounts are created by existing admins.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div id="features" class="row text-center">
+        <div class="col-md-3 mb-4">
+          <i class="bi bi-robot display-4 text-primary mb-2"></i>
+          <h6>Auto-grading</h6>
+          <p class="text-muted">Let AI handle initial grading drafts, saving time on repetitive assessments.</p>
+        </div>
+        <div class="col-md-3 mb-4">
+          <i class="bi bi-list-check display-4 text-primary mb-2"></i>
+          <h6>Rubrics</h6>
+          <p class="text-muted">Maintain consistency with customizable rubrics and criteria for every assignment.</p>
+        </div>
+        <div class="col-md-3 mb-4">
+          <i class="bi bi-arrow-repeat display-4 text-primary mb-2"></i>
+          <h6>Regrade Workflow</h6>
+          <p class="text-muted">Transparent appeal process with status updates for regrading requests.</p>
+        </div>
+        <div class="col-md-3 mb-4">
+          <i class="bi bi-graph-up display-4 text-primary mb-2"></i>
+          <h6>Cost Dashboard</h6>
+          <p class="text-muted">Track AI usage and spending with daily breakdowns and budget controls.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="bg-light text-center py-3 mt-5">
+      <small class="text-muted">AI Grading Demo &copy; 2025</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  </body>
+</html>

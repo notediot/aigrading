@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Class Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+      .breadcrumb { --bs-breadcrumb-divider: '›'; }
+      .tab-content > .tab-pane { padding-top: 1rem; }
+      .nav-tabs .nav-link { cursor: pointer; }
+      .table td, .table th { vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="../lecturer/dashboard.html"><i class="bi bi-mortarboard me-2"></i>AI Grading</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#lecturerNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="lecturerNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link active" href="classes.html">Classes</a></li>
+            <li class="nav-item"><a class="nav-link" href="grade-queue.html">Grade Queue</a></li>
+          </ul>
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="roleMenu" role="button" data-bs-toggle="dropdown">Lecturer</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="../student/dashboard.html">Switch to Student</a></li>
+                <li><a class="dropdown-item" href="../admin/dashboard.html">Switch to Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../logout.html">Log Out</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container my-4">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="classes.html">Lecturer</a></li>
+          <li class="breadcrumb-item"><a href="classes.html">Classes</a></li>
+          <li id="lecturerClassCrumb" class="breadcrumb-item active" aria-current="page">Class</li>
+        </ol>
+      </nav>
+      <h3 id="classNameHeader" class="mb-3">Class Name</h3>
+      <ul class="nav nav-tabs" id="lecturerClassTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="roster-tab" data-bs-toggle="tab" data-bs-target="#tab-roster" type="button" role="tab" aria-controls="tab-roster" aria-selected="true">Roster</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="lassign-tab" data-bs-toggle="tab" data-bs-target="#tab-assignments" type="button" role="tab" aria-controls="tab-assignments" aria-selected="false">Assignments</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="gradebook-tab" data-bs-toggle="tab" data-bs-target="#tab-gradebook" type="button" role="tab" aria-controls="tab-gradebook" aria-selected="false">Gradebook</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="appeals-tab" data-bs-toggle="tab" data-bs-target="#tab-appeals" type="button" role="tab" aria-controls="tab-appeals" aria-selected="false">Appeals</button>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-roster" role="tabpanel" aria-labelledby="roster-tab">
+          <div class="my-3">
+            <table class="table table-sm">
+              <thead><tr><th>ID</th><th>Name</th><th>Action</th></tr></thead>
+              <tbody id="rosterTable"></tbody>
+            </table>
+            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">Add Student</button>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="tab-assignments" role="tabpanel" aria-labelledby="lassign-tab">
+          <div class="text-end my-2">
+            <a id="newAssignLink" href="#" class="btn btn-primary btn-sm">New Assignment</a>
+          </div>
+          <ul id="assignmentList" class="list-group"></ul>
+        </div>
+        <div class="tab-pane fade" id="tab-gradebook" role="tabpanel" aria-labelledby="gradebook-tab">
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm text-center">
+              <thead><tr id="gradebookHeader"><th>Student</th></tr></thead>
+              <tbody id="gradebookBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="tab-appeals" role="tabpanel" aria-labelledby="appeals-tab">
+          <table class="table table-sm">
+            <thead><tr><th>Student</th><th>Assignment</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="appealsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Add Student Modal -->
+    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addStudentModalLabel">Add Student</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label for="addStudentSelect" class="form-label">Select student to add:</label>
+            <select id="addStudentSelect" class="form-select"></select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="confirmAddBtn" class="btn btn-primary btn-sm">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accept Appeal Modal -->
+    <div class="modal fade" id="acceptModal" tabindex="-1" aria-labelledby="acceptModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h6 class="modal-title" id="acceptModalLabel">Accept Appeal</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">Are you sure you want to accept this appeal?</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="confirmAcceptBtn" class="btn btn-success btn-sm">Accept</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deny Appeal Modal -->
+    <div class="modal fade" id="denyModal" tabindex="-1" aria-labelledby="denyModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h6 class="modal-title" id="denyModalLabel">Deny Appeal</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">Are you sure you want to deny this appeal?</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="confirmDenyBtn" class="btn btn-danger btn-sm">Deny</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="bg-light text-center py-3 mt-5"><small class="text-muted">AI Grading Demo &copy; 2025</small></footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+      <div id="liveToast" class="toast text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body" id="toastBody">Action performed.</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__demo = {
+        "lecturers":[{"id":"L001","name":"Dr. Ada Lee"},{"id":"L002","name":"Prof. Kelvin Chan"}],
+        "classes":[
+          {"id":"SE101","name":"Software Engineering I","lecturerId":"L001",
+           "assignments":[{"id":"A1","title":"Lab 1 – Arrays","due":"2025-09-30"},{"id":"A2","title":"Essay – Software Ethics","due":"2025-10-10"}],
+           "students":["S20721831","S20720001"]}],
+        "students":[{"id":"S20721831","name":"Alice Chan"},{"id":"S20720001","name":"Bob Lee"},{"id":"S20719999","name":"Evan Ho"}],
+        "submissions":[
+          {"id":"SUB1","classId":"SE101","assignmentId":"A1","studentId":"S20721831","status":"Graded","score":88,"submitted":"2025-09-25","content":"// Code..."},
+          {"id":"SUB2","classId":"SE101","assignmentId":"A1","studentId":"S20720001","status":"Appealed","score":72,"submitted":"2025-09-25","content":"// Code..."},
+          {"id":"SUB3","classId":"SE101","assignmentId":"A2","studentId":"S20721831","status":"Grading","score":null,"submitted":"2025-10-01","content":"Essay..."},
+          {"id":"SUB4","classId":"SE101","assignmentId":"A2","studentId":"S20720001","status":"Queued","score":null,"submitted":"2025-10-02","content":"Essay..."}
+        ],
+        "rubricCriteria":[{"name":"Correctness","weight":40},{"name":"Style","weight":20},{"name":"Documentation","weight":20},{"name":"Efficiency","weight":20}],
+        "appeals":[{"id":"APP1","submissionId":"SUB2","studentId":"S20720001","classId":"SE101","assignmentId":"A1","status":"Under Review","submitted":"2025-09-26",
+          "timeline":[{"status":"Submitted","date":"2025-09-26","note":"Student requested regrade."},{"status":"Under Review","date":"2025-09-27","note":"Instructor re-evaluating."}]}]
+      };
+      const params = new URLSearchParams(window.location.search);
+      const classId = params.get('classId') || 'SE101';
+      const classData = window.__demo.classes.find(c => c.id === classId);
+      if (classData) {
+        document.getElementById('lecturerClassCrumb').textContent = classData.id;
+        document.getElementById('classNameHeader').innerText = `${classData.id} – ${classData.name}`;
+        // Roster
+        const rosterTable = document.getElementById('rosterTable');
+        rosterTable.innerHTML = classData.students.map(sid => {
+          const student = window.__demo.students.find(s => s.id === sid);
+          return `<tr><td>${sid}</td><td>${student.name}</td><td><button class="btn btn-sm btn-outline-danger remove-student-btn" data-student="${sid}"><i class="bi bi-person-x"></i></button></td></tr>`;
+        }).join('');
+        // Add student select
+        const addSelect = document.getElementById('addStudentSelect');
+        addSelect.innerHTML = '';
+        const notEnrolled = window.__demo.students.filter(st => !classData.students.includes(st.id));
+        for (const st of notEnrolled) {
+          const opt = document.createElement('option');
+          opt.value = st.id; opt.textContent = `${st.id} – ${st.name}`;
+          addSelect.appendChild(opt);
+        }
+        // Assignments tab
+        const assignmentList = document.getElementById('assignmentList');
+        assignmentList.innerHTML = classData.assignments.map(asmt => {
+          const totalSubs = window.__demo.submissions.filter(sub => sub.classId === classData.id && sub.assignmentId === asmt.id).length;
+          const gradedSubs = window.__demo.submissions.filter(sub => sub.classId === classData.id && sub.assignmentId === asmt.id && sub.status !== 'Queued' && sub.status !== 'Grading').length;
+          const statusText = totalSubs ? `${gradedSubs}/${totalSubs} graded` : 'No submissions yet';
+          return `<li class="list-group-item d-flex justify-content-between align-items-center">
+            <div><strong>${asmt.id}</strong> – ${asmt.title} <small class="text-muted">(Due ${asmt.due})</small><br><small>Status: ${statusText}</small></div>
+            <a href="grade-queue.html?classId=${classData.id}&assignmentId=${asmt.id}" class="btn btn-sm btn-outline-primary">Grade</a>
+          </li>`;
+        }).join('');
+        document.getElementById('newAssignLink').href = `assignment-new.html?classId=${classData.id}`;
+        // Gradebook
+        const gradeHeader = document.getElementById('gradebookHeader');
+        gradeHeader.innerHTML = '<th>Student</th>' + classData.assignments.map(a => `<th>${a.id}</th>`).join('');
+        const gradeBody = document.getElementById('gradebookBody');
+        gradeBody.innerHTML = classData.students.map(sid => {
+          const student = window.__demo.students.find(s => s.id === sid);
+          let row = `<tr><td class="text-start">${student.name}</td>`;
+          for (const asmt of classData.assignments) {
+            const sub = window.__demo.submissions.find(sub => sub.classId === classData.id && sub.assignmentId === asmt.id && sub.studentId === sid);
+            if (sub) {
+              if (sub.status === 'Queued' || sub.status === 'Grading') {
+                row += `<td><a href="grade-detail.html?submissionId=${sub.id}">Grade</a></td>`;
+              } else {
+                row += `<td>${sub.score}${sub.status==='Appealed' ? '*' : ''}</td>`;
+              }
+            } else {
+              row += '<td>&mdash;</td>';
+            }
+          }
+          row += '</tr>';
+          return row;
+        }).join('');
+        // Appeals
+        const appealsTable = document.getElementById('appealsTable');
+        const classAppeals = window.__demo.appeals.filter(a => a.classId === classData.id);
+        appealsTable.innerHTML = classAppeals.map(app => {
+          const student = window.__demo.students.find(s => s.id === app.studentId);
+          return `<tr><td>${student.name}</td><td>${app.assignmentId}</td><td>${app.status}</td><td>
+            <button class="btn btn-success btn-sm accept-btn" data-appeal="${app.id}" data-bs-toggle="modal" data-bs-target="#acceptModal">Accept</button>
+            <button class="btn btn-danger btn-sm deny-btn" data-appeal="${app.id}" data-bs-toggle="modal" data-bs-target="#denyModal">Deny</button>
+          </td></tr>`;
+        }).join('');
+      }
+      // Remove student
+      document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-student-btn')) {
+          const btn = e.target.closest('.remove-student-btn');
+          const sid = btn.getAttribute('data-student');
+          btn.closest('tr').remove();
+          classData.students = classData.students.filter(s => s !== sid);
+          document.getElementById('toastBody').innerText = 'Removed student ' + sid;
+          new bootstrap.Toast(document.getElementById('liveToast')).show();
+        }
+      });
+      // Add student confirm
+      document.getElementById('confirmAddBtn').addEventListener('click', () => {
+        const select = document.getElementById('addStudentSelect');
+        const sid = select.value;
+        if (sid) {
+          classData.students.push(sid);
+          const student = window.__demo.students.find(s => s.id === sid);
+          const newRow = document.createElement('tr');
+          newRow.innerHTML = `<td>${sid}</td><td>${student.name}</td><td><button class="btn btn-sm btn-outline-danger remove-student-btn" data-student="${sid}"><i class="bi bi-person-x"></i></button></td>`;
+          document.getElementById('rosterTable').appendChild(newRow);
+          select.querySelector(`option[value="${sid}"]`).remove();
+          const modal = bootstrap.Modal.getInstance(document.getElementById('addStudentModal'));
+          modal.hide();
+          document.getElementById('toastBody').innerText = 'Added student ' + sid;
+          new bootstrap.Toast(document.getElementById('liveToast')).show();
+        }
+      });
+      // Accept/Deny appeal
+      document.getElementById('confirmAcceptBtn').addEventListener('click', () => {
+        const row = document.querySelector('#appealsTable tr');
+        if (row) row.remove();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('acceptModal'));
+        modal.hide();
+        document.getElementById('toastBody').innerText = 'Appeal accepted and grade updated.';
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+      document.getElementById('confirmDenyBtn').addEventListener('click', () => {
+        const row = document.querySelector('#appealsTable tr');
+        if (row) row.remove();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('denyModal'));
+        modal.hide();
+        document.getElementById('toastBody').innerText = 'Appeal denied.';
+        new bootstrap.Toast(document.getElementById('liveToast')).show();
+      });
+    </script>
+  </body>
+</html>
