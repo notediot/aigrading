@@ -57,6 +57,9 @@
           <button class="nav-link" id="lassign-tab" data-bs-toggle="tab" data-bs-target="#tab-assignments" type="button" role="tab" aria-controls="tab-assignments" aria-selected="false">Assignments</button>
         </li>
         <li class="nav-item" role="presentation">
+          <button class="nav-link" id="submissions-tab" data-bs-toggle="tab" data-bs-target="#tab-submissions" type="button" role="tab" aria-controls="tab-submissions" aria-selected="false">Submissions</button>
+        </li>
+        <li class="nav-item" role="presentation">
           <button class="nav-link" id="gradebook-tab" data-bs-toggle="tab" data-bs-target="#tab-gradebook" type="button" role="tab" aria-controls="tab-gradebook" aria-selected="false">Gradebook</button>
         </li>
         <li class="nav-item" role="presentation">
@@ -78,6 +81,39 @@
             <a id="newAssignLink" href="#" class="btn btn-primary btn-sm">New Assignment</a>
           </div>
           <ul id="assignmentList" class="list-group"></ul>
+        </div>
+        <div class="tab-pane fade" id="tab-submissions" role="tabpanel" aria-labelledby="submissions-tab">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <select id="submissionAssignmentFilter" class="form-select form-select-sm">
+                <option value="">All Assignments</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <select id="submissionStatusFilter" class="form-select form-select-sm">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="graded">Graded</option>
+                <option value="appealed">Appealed</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped table-sm">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Assignment</th>
+                  <th>File</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                  <th>Submitted</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="submissionsTable"></tbody>
+            </table>
+          </div>
         </div>
         <div class="tab-pane fade" id="tab-gradebook" role="tabpanel" aria-labelledby="gradebook-tab">
           <div class="table-responsive">
@@ -487,6 +523,147 @@
         }
       });
 
+      // Load submissions for this course
+      async function loadSubmissions() {
+        try {
+          const q = query(
+            collection(db, 'submission'),
+            where('courseId', '==', courseId)
+          );
+          const snap = await getDocs(q);
+          const submissions = [];
+          
+          for (const submissionDoc of snap.docs) {
+            const submission = submissionDoc.data();
+            
+            // Get student info
+            const studentQuery = query(collection(db, 'user'), where('__name__', '==', submission.studentId), limit(1));
+            const studentSnap = await getDocs(studentQuery);
+            const studentName = studentSnap.empty ? submission.studentId : 
+              `${studentSnap.docs[0].data().firstName || ''} ${studentSnap.docs[0].data().lastName || ''}`.trim() || submission.studentId;
+            
+            submissions.push({
+              id: submissionDoc.id,
+              studentId: submission.studentId,
+              studentName: studentName,
+              assignmentId: submission.assignmentId,
+              fileName: submission.fileName || 'No file',
+              fileSize: submission.fileSize || 0,
+              codeLanguage: submission.codeLanguage || 'text',
+              status: submission.status || 'pending',
+              score: submission.score || null,
+              submittedAt: submission.submittedAt,
+              fileContent: submission.fileContent
+            });
+          }
+
+          // Populate assignment filter
+          const assignmentIds = [...new Set(submissions.map(s => s.assignmentId))];
+          const assignmentFilter = document.getElementById('submissionAssignmentFilter');
+          assignmentFilter.innerHTML = '<option value="">All Assignments</option>' +
+            assignmentIds.map(id => `<option value="${id}">${id}</option>`).join('');
+
+          // Render submissions table
+          renderSubmissionsTable(submissions);
+          
+          // Add filter event listeners
+          document.getElementById('submissionAssignmentFilter').addEventListener('change', () => renderSubmissionsTable(submissions));
+          document.getElementById('submissionStatusFilter').addEventListener('change', () => renderSubmissionsTable(submissions));
+          
+        } catch (e) {
+          console.error('Failed to load submissions:', e);
+        }
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      function getFileIcon(fileName) {
+        if (fileName === 'No file') return '📄';
+        const ext = fileName.split('.').pop().toLowerCase();
+        const iconMap = {
+          'java': '☕',
+          'py': '🐍',
+          'html': '🌐',
+          'css': '🎨',
+          'js': '📜',
+          'txt': '📄'
+        };
+        return iconMap[ext] || '📄';
+      }
+
+      function downloadFile(submission) {
+        if (!submission.fileContent || submission.fileName === 'No file') return;
+        
+        const blob = new Blob([submission.fileContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = submission.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function renderSubmissionsTable(allSubmissions) {
+        const assignmentFilter = document.getElementById('submissionAssignmentFilter').value;
+        const statusFilter = document.getElementById('submissionStatusFilter').value;
+        
+        let filtered = allSubmissions;
+        if (assignmentFilter) {
+          filtered = filtered.filter(s => s.assignmentId === assignmentFilter);
+        }
+        if (statusFilter) {
+          filtered = filtered.filter(s => s.status === statusFilter);
+        }
+
+        const tableBody = document.getElementById('submissionsTable');
+        tableBody.innerHTML = filtered.map(submission => {
+          const fileSize = submission.fileSize ? formatFileSize(submission.fileSize) : '';
+          const fileIcon = getFileIcon(submission.fileName);
+          const language = submission.codeLanguage ? ` (${submission.codeLanguage})` : '';
+          const fileInfo = `${fileIcon} ${submission.fileName}${language}${fileSize ? ` - ${fileSize}` : ''}`;
+          
+          const scoreText = submission.score !== null ? `${submission.score}/100` : '—';
+          const submittedText = submission.submittedAt && submission.submittedAt.toDate ? 
+            submission.submittedAt.toDate().toLocaleString() : '—';
+          
+          const statusBadge = submission.status === 'graded' ? 'success' : 
+                             submission.status === 'pending' ? 'warning' : 'secondary';
+          
+          return `
+            <tr>
+              <td>${submission.studentName}</td>
+              <td>${submission.assignmentId}</td>
+              <td><small>${fileInfo}</small></td>
+              <td><span class="badge bg-${statusBadge}">${submission.status}</span></td>
+              <td>${scoreText}</td>
+              <td><small>${submittedText}</small></td>
+              <td>
+                ${submission.fileName !== 'No file' ? 
+                  `<button onclick="downloadFile(${JSON.stringify(submission).replace(/"/g, '&quot;')})" class="btn btn-sm btn-outline-primary me-1">Download</button>` : 
+                  '<span class="text-muted">No file</span>'
+                }
+                <button class="btn btn-sm btn-outline-success" onclick="gradeSubmission('${submission.id}')">Grade</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Make functions globally accessible
+      window.downloadFile = downloadFile;
+      window.gradeSubmission = (submissionId) => {
+        // Placeholder for grading functionality
+        showToast('Grading functionality coming soon!');
+      };
+
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           // Optional: enforce auth here
@@ -494,6 +671,7 @@
         currentUser = user;
         loadAssignments();
         loadEnrolledStudents();
+        loadSubmissions();
       });
     </script>
   </body>
