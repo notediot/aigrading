@@ -68,10 +68,8 @@
           <div class="modal-body">
             <form id="assignmentForm">
               <div class="mb-3">
-                <label for="classSelect" class="form-label">Class</label>
-                <select class="form-select" id="classSelect" required>
-                  <option value="">Select a class...</option>
-                </select>
+                <label class="form-label">Class</label>
+                <div class="form-control-plaintext">class123 - CS101-A (Academic Year: 2023)</div>
               </div>
               <div class="mb-3">
                 <label for="assignmentTitle" class="form-label">Assignment Title</label>
@@ -147,55 +145,19 @@
       // Load classes for the current lecturer
       async function loadClasses() {
         try {
-          // First get the lecturer's user profile to get their authUid
-          const userQuery = query(collection(db, "user"), where("authUid", "==", currentUser.uid), limit(1));
-          const userSnapshot = await getDocs(userQuery);
+          // Use the existing class123 from your database
+          const classDoc = await getDocs(query(collection(db, "class"), where("__name__", "==", "class123"), limit(1)));
           
-          if (userSnapshot.empty) {
-            console.error("No user profile found for current auth user");
-            return;
-          }
-          
-          const userDoc = userSnapshot.docs[0];
-          const userId = userDoc.id;
-          
-          // Get enrollments for this user where role is lecturer
-          const enrollmentQuery = query(collection(db, "enrollment"), where("userId", "==", userId), where("roleInCourse", "==", "lecturer"));
-          const enrollmentSnapshot = await getDocs(enrollmentQuery);
-          
-          const courseIds = [];
-          enrollmentSnapshot.forEach(doc => {
-            courseIds.push(doc.data().courseId);
-          });
-          
-          if (courseIds.length === 0) {
+          if (classDoc.empty) {
+            console.error("class123 not found in database");
             classes = [];
             renderClasses();
             populateClassSelect();
             return;
           }
           
-          // Get courses for these courseIds
-          const coursesQuery = query(collection(db, "course"), where("__name__", "in", courseIds));
-          const coursesSnapshot = await getDocs(coursesQuery);
-          
-          const classIds = [];
-          coursesSnapshot.forEach(doc => {
-            classIds.push(doc.data().classId);
-          });
-          
-          // Get classes for these classIds
-          if (classIds.length > 0) {
-            const classesQuery = query(collection(db, "class"), where("__name__", "in", classIds));
-            const classesSnapshot = await getDocs(classesQuery);
-            
-            classes = [];
-            classesSnapshot.forEach(doc => {
-              classes.push({ id: doc.id, ...doc.data() });
-            });
-          } else {
-            classes = [];
-          }
+          const classData = classDoc.docs[0];
+          classes = [{ id: classData.id, ...classData.data() }];
           
           renderClasses();
           populateClassSelect();
@@ -226,38 +188,32 @@
         `).join('');
       }
 
-      // Populate class select in modal
+      // Populate class select in modal (no longer needed, but keeping for compatibility)
       function populateClassSelect() {
-        const select = document.getElementById('classSelect');
-        select.innerHTML = '<option value="">Select a class...</option>' +
-          classes.map(cls => `<option value="${cls.id}">${cls.className}</option>`).join('');
+        // No longer needed since we're using class123 directly
       }
 
       // Create assignment for a specific class
       window.createAssignmentForClass = async function(classId) {
-        const classObj = classes.find(c => c.id === classId);
-        if (!classObj) return;
-
-        document.getElementById('classSelect').value = classId;
         const modal = new bootstrap.Modal(document.getElementById('createAssignmentModal'));
         modal.show();
       };
 
       // Create assignment
       document.getElementById('createAssignmentBtn').addEventListener('click', async function() {
-        const classId = document.getElementById('classSelect').value;
+        const classId = 'class123'; // Use class123 directly
         const title = document.getElementById('assignmentTitle').value;
         const description = document.getElementById('assignmentDescription').value;
         const maxPoints = parseInt(document.getElementById('maxPoints').value);
         const dueDate = new Date(document.getElementById('dueDate').value);
 
-        if (!classId || !title || !dueDate) {
+        if (!title || !dueDate) {
           alert('Please fill in all required fields');
           return;
         }
 
         try {
-          // Ensure general course exists
+          // Ensure general course exists for class123
           const courseId = await ensureGeneralCourse(classId);
           
           // Create assignment
