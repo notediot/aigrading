@@ -298,7 +298,7 @@
     <script type="module">
       import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
       import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+      import { getFirestore, collection, query, where, getDocs, orderBy, addDoc, deleteDoc, doc, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
       const firebaseConfig = {
         apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
@@ -315,10 +315,128 @@
 
       const params = new URLSearchParams(window.location.search);
       const classIdParam = params.get('classId') || 'class123';
+      let currentUser = null;
+      let courseId = `course_general_${classIdParam}`;
+
+      // Load enrolled students for this course
+      async function loadEnrolledStudents() {
+        try {
+          const q = query(
+            collection(db, 'enrollment'),
+            where('courseId', '==', courseId),
+            where('roleInCourse', '==', 'student')
+          );
+          const snap = await getDocs(q);
+          const enrolledStudents = [];
+          
+          for (const enrollmentDoc of snap.docs) {
+            const enrollment = enrollmentDoc.data();
+            const userQuery = query(collection(db, 'user'), where('__name__', '==', enrollment.userId), limit(1));
+            const userSnap = await getDocs(userQuery);
+            if (!userSnap.empty) {
+              const user = userSnap.docs[0].data();
+              enrolledStudents.push({
+                id: enrollment.userId,
+                name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || enrollment.userId,
+                enrollmentId: enrollmentDoc.id
+              });
+            }
+          }
+
+          // Render roster table
+          const rosterTable = document.getElementById('rosterTable');
+          rosterTable.innerHTML = enrolledStudents.map(student => `
+            <tr>
+              <td>${student.id}</td>
+              <td>${student.name}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-danger remove-student-btn" data-enrollment-id="${student.enrollmentId}" data-student-id="${student.id}">
+                  <i class="bi bi-person-x"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+
+          // Populate add student dropdown with non-enrolled students
+          await populateStudentDropdown(enrolledStudents.map(s => s.id));
+        } catch (e) {
+          console.error('Failed to load enrolled students:', e);
+        }
+      }
+
+      // Populate student dropdown with students not already enrolled
+      async function populateStudentDropdown(excludeIds = []) {
+        try {
+          const q = query(collection(db, 'user'), where('role', '==', 'student'));
+          const snap = await getDocs(q);
+          const availableStudents = [];
+          
+          snap.forEach(doc => {
+            const user = doc.data();
+            if (!excludeIds.includes(doc.id)) {
+              availableStudents.push({
+                id: doc.id,
+                name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || doc.id
+              });
+            }
+          });
+
+          const select = document.getElementById('addStudentSelect');
+          select.innerHTML = '<option value="">Select a student...</option>' +
+            availableStudents.map(student => 
+              `<option value="${student.id}">${student.id} – ${student.name}</option>`
+            ).join('');
+        } catch (e) {
+          console.error('Failed to load available students:', e);
+        }
+      }
+
+      // Add student to course
+      async function addStudentToCourse(studentId) {
+        try {
+          const enrollmentId = `${courseId}_${studentId}`;
+          await addDoc(collection(db, 'enrollment'), {
+            courseId: courseId,
+            userId: studentId,
+            roleInCourse: 'student',
+            createdAt: new Date()
+          });
+          
+          // Reload the roster
+          await loadEnrolledStudents();
+          showToast('Student added successfully');
+        } catch (e) {
+          console.error('Failed to add student:', e);
+          showToast('Failed to add student', 'error');
+        }
+      }
+
+      // Remove student from course
+      async function removeStudentFromCourse(enrollmentId) {
+        try {
+          await deleteDoc(doc(db, 'enrollment', enrollmentId));
+          
+          // Reload the roster
+          await loadEnrolledStudents();
+          showToast('Student removed successfully');
+        } catch (e) {
+          console.error('Failed to remove student:', e);
+          showToast('Failed to remove student', 'error');
+        }
+      }
+
+      // Show toast notification
+      function showToast(message, type = 'success') {
+        const toastBody = document.getElementById('toastBody');
+        if (toastBody) {
+          toastBody.textContent = message;
+          const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+          toast.show();
+        }
+      }
 
       async function loadAssignments() {
         try {
-          const courseId = `course_general_${classIdParam}`;
           const q = query(
             collection(db, 'assignment'),
             where('courseId', '==', courseId)
@@ -347,11 +465,35 @@
         }
       }
 
+      // Event listeners for roster management
+      document.addEventListener('click', async (e) => {
+        if (e.target.closest('.remove-student-btn')) {
+          const btn = e.target.closest('.remove-student-btn');
+          const enrollmentId = btn.getAttribute('data-enrollment-id');
+          if (confirm('Are you sure you want to remove this student?')) {
+            await removeStudentFromCourse(enrollmentId);
+          }
+        }
+      });
+
+      // Add student confirm button
+      document.getElementById('confirmAddBtn').addEventListener('click', async () => {
+        const select = document.getElementById('addStudentSelect');
+        const studentId = select.value;
+        if (studentId) {
+          await addStudentToCourse(studentId);
+          const modal = bootstrap.Modal.getInstance(document.getElementById('addStudentModal'));
+          modal.hide();
+        }
+      });
+
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           // Optional: enforce auth here
         }
+        currentUser = user;
         loadAssignments();
+        loadEnrolledStudents();
       });
     </script>
   </body>
