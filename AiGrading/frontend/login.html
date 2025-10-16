@@ -57,24 +57,73 @@
       <small class="text-muted">AI Grading Demo &copy; 2025</small>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <script>
-      // Pre-select role if provided via query params
-      const params = new URLSearchParams(window.location.search);
-      const role = params.get('role');
-      if (role) {
-        const roleSelect = document.getElementById('roleSelect');
-        if (roleSelect) roleSelect.value = role;
-      }
-      // Handle login form submission (front-end demo only)
-      document.getElementById('loginForm').addEventListener('submit', function (e) {
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, collection, query, where, getDocs, limit, setDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const selectedRole = document.getElementById('roleSelect').value;
-        if (selectedRole === 'student') {
-          window.location.href = 'student/dashboard.html';
-        } else if (selectedRole === 'lecturer') {
-          window.location.href = 'lecturer/dashboard.html';
-        } else if (selectedRole === 'admin') {
-          window.location.href = 'admin/dashboard.html';
+        const email = (document.getElementById('inputEmail').value || '').trim();
+        const password = document.getElementById('inputPassword').value || '';
+
+        try {
+          const cred = await signInWithEmailAndPassword(auth, email, password);
+          const uid = cred.user.uid;
+
+          // First try: lookup by authUid
+          let q = query(collection(db, 'user'), where('authUid', '==', uid), limit(1));
+          let snap = await getDocs(q);
+          let docSnap;
+          if (snap.empty) {
+            // Auto-link once: lookup by email and, if it's one of the allowed demo users, set authUid
+            q = query(collection(db, 'user'), where('email', '==', email), limit(1));
+            snap = await getDocs(q);
+            if (snap.empty) {
+              alert('No linked profile found for this account.');
+              return;
+            }
+            docSnap = snap.docs[0];
+            const candidateId = docSnap.id;
+            if (candidateId === 'user123' || candidateId === 'lecturer123') {
+              await setDoc(doc(db, 'user', candidateId), { authUid: uid }, { merge: true });
+            } else {
+              alert('This account is not authorized for this demo.');
+              return;
+            }
+          } else {
+            docSnap = snap.docs[0];
+          }
+          const userData = docSnap.data();
+          const userId = docSnap.id;
+
+          // Strict routing: only allow these two specific accounts
+          if (userId === 'user123' && userData.role === 'student') {
+            window.location.href = 'student/dashboard.html';
+            return;
+          }
+          if (userId === 'lecturer123' && userData.role === 'lecturer') {
+            window.location.href = 'lecturer/dashboard.html';
+            return;
+          }
+
+          alert('This account is not authorized for this demo.');
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Login failed');
         }
       });
     </script>

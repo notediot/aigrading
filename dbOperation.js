@@ -1,7 +1,7 @@
-
 // dbOperations.js
-import { db } from './firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from './firebase.js';
+import { collection, doc, setDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 // Create a user
 export const createUser = async (userId, userData) => {
@@ -78,7 +78,7 @@ export const createEnrollment = async (courseId, userId, role) => {
       courseId: courseId,
       userId: userId,
       roleInCourse: role,
-      Created_at: serverTimestamp()
+      createdAt: serverTimestamp()
     });
     console.log("Enrollment created successfully");
   } catch (error) {
@@ -154,7 +154,7 @@ export const createSubmission = async (assignmentId, studentId, attemptNo, submi
   // Create a grade event
   export const createGradeEvent = async (gradeEventData) => {
     try {
-      await setDoc(doc(db, "gradeEvent"), {
+    await addDoc(collection(db, "gradeEvent"), {
         submissionId: gradeEventData.submissionId,
         actorId: gradeEventData.actorId || null,
         source: gradeEventData.source, // "ai" | "regrade" | "manual_override"
@@ -168,6 +168,46 @@ export const createSubmission = async (assignmentId, studentId, attemptNo, submi
       throw error;
     }
   };
+
+// Create Firebase Auth user (email/password) and link to existing Firestore user doc
+export const createAuthUserAndLink = async (userId, email, password) => {
+  try {
+    const credentials = await createUserWithEmailAndPassword(auth, email, password);
+    const authUid = credentials.user.uid;
+    await setDoc(
+      doc(db, "user", userId),
+      {
+        authUid: authUid,
+        email: email,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+    console.log(`Auth created and linked for user ${userId}`);
+    return authUid;
+  } catch (error) {
+    console.error("Error creating auth user and linking:", error);
+    throw error;
+  }
+};
+
+// Update an existing Firestore user with a provided authUid (manual linking)
+export const updateUserAuthUid = async (userId, authUid) => {
+  try {
+    await setDoc(
+      doc(db, "user", userId),
+      {
+        authUid: authUid,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+    console.log(`authUid linked for user ${userId}`);
+  } catch (error) {
+    console.error("Error updating user authUid:", error);
+    throw error;
+  }
+};
   
   // Create AI evidence
   export const createAIEvidence = async (submissionId, evidenceData) => {
