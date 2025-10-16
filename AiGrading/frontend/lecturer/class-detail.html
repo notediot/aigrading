@@ -294,5 +294,65 @@
         new bootstrap.Toast(document.getElementById('liveToast')).show();
       });
     </script>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNsI_tV0KE-hdnN_XGpQaus3vd5snJVxs",
+        authDomain: "aigrading-2c9a9.firebaseapp.com",
+        projectId: "aigrading-2c9a9",
+        storageBucket: "aigrading-2c9a9.appspot.com",
+        messagingSenderId: "121677391627",
+        appId: "1:121677391627:web:f0fb8ab7a800299e94240e",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const params = new URLSearchParams(window.location.search);
+      const classIdParam = params.get('classId') || 'class123';
+
+      async function loadAssignments() {
+        try {
+          const courseId = `course_general_${classIdParam}`;
+          const q = query(
+            collection(db, 'assignment'),
+            where('courseId', '==', courseId)
+          );
+          const snap = await getDocs(q);
+          const items = [];
+          snap.forEach(docSnap => {
+            const a = docSnap.data();
+            const dueText = a.dueAt && a.dueAt.toDate ? a.dueAt.toDate().toLocaleString() : '—';
+            items.push({ id: docSnap.id, title: a.title || docSnap.id, dueText });
+          });
+
+          if (items.length > 0) {
+            const assignmentList = document.getElementById('assignmentList');
+            assignmentList.innerHTML = items.map(asmt => `
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>${asmt.id}</strong> – ${asmt.title} <small class="text-muted">(Due ${asmt.dueText})</small></div>
+                <a href="grade-queue.html?classId=${classIdParam}&assignmentId=${asmt.id}" class="btn btn-sm btn-outline-primary">Grade</a>
+              </li>
+            `).join('');
+            const newLink = document.getElementById('newAssignLink');
+            if (newLink) newLink.href = `assignment-new.html?classId=${classIdParam}`;
+          }
+        } catch (e) {
+          console.error('Failed to load assignments:', e);
+        }
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          // Optional: enforce auth here
+        }
+        loadAssignments();
+      });
+    </script>
   </body>
 </html>
